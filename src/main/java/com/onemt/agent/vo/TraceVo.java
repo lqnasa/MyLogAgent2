@@ -1,6 +1,6 @@
 package com.onemt.agent.vo;
 
-import java.util.List;
+import java.util.Arrays;
 import java.util.Map;
 
 public class TraceVo{
@@ -15,7 +15,7 @@ public class TraceVo{
 	private String parentId; // "16a52a9f-e697-45ce-92fb-7395339eae4b",
 	private String className; // "dao.impl.ProductDaoImpl"
 	private String methodName;// "queryProduct",
-	private List<Map<String,Object>> inParams; // 参数值
+	private Object[] inParams; // 参数值
 	private Map<String,Object> retVal; //返回值
 	private String errorType; //异常类型
 	private Object errorMessage;  //异常信息
@@ -49,9 +49,9 @@ public class TraceVo{
 	 * @param callTime
 	 */
 	public TraceVo(String hostIp, String threadName, String instanceName, Boolean isEntry, Integer errCode,
-			String traceId, String spanId, String parentId, String className, String methodName,
-			List<Map<String, Object>> inParams, Map<String, Object> retVal, String errorType, Object errorMessage,
-			Long createTime, Long returnTime, Long callTime) {
+			String traceId, String spanId, String parentId, String className, String methodName, Object[] inParams,
+			Map<String, Object> retVal, String errorType, Object errorMessage, Long createTime, Long returnTime,
+			Long callTime) {
 		super();
 		this.hostIp = hostIp;
 		this.threadName = threadName;
@@ -152,11 +152,11 @@ public class TraceVo{
 		this.methodName = methodName;
 	}
 
-	public List<Map<String, Object>> getInParams() {
+	public Object[] getInParams() {
 		return inParams;
 	}
 
-	public void setInParams(List<Map<String, Object>> inParams) {
+	public void setInParams(Object[] inParams) {
 		this.inParams = inParams;
 	}
 
@@ -213,9 +213,12 @@ public class TraceVo{
 		return "TraceVo [hostIp=" + hostIp + ", threadName=" + threadName + ", instanceName=" + instanceName
 				+ ", isEntry=" + isEntry + ", errCode=" + errCode + ", traceId=" + traceId + ", spanId=" + spanId
 				+ ", parentId=" + parentId + ", className=" + className + ", methodName=" + methodName + ", inParams="
-				+ inParams + ", retVal=" + retVal + ", errorType=" + errorType + ", errorMessage=" + errorMessage
-				+ ", createTime=" + createTime + ", returnTime=" + returnTime + ", callTime=" + callTime + "]";
+				+ Arrays.toString(inParams) + ", retVal=" + retVal + ", errorType=" + errorType + ", errorMessage="
+				+ errorMessage + ", createTime=" + createTime + ", returnTime=" + returnTime + ", callTime=" + callTime
+				+ "]";
 	}
+
+	
 
 	
 }
