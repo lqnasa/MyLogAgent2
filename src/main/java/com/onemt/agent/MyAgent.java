@@ -33,7 +33,7 @@ public class MyAgent {
 			public DynamicType.Builder<?> transform(DynamicType.Builder<?> builder, TypeDescription typeDescription,
 					ClassLoader classLoader) {
 				System.out.println("=============transform=============");
-				return builder.method(ElementMatchers.isAnnotatedWith(TraceMethod.class)) // 拦截任意方法
+				return builder.method(ElementMatchers.isAnnotatedWith(TraceMethod.class).and(ElementMatchers.not(ElementMatchers.isStatic())))// 拦截任意方法
 						.intercept(MethodDelegation.to(TimeInterceptor.class)); // 委托
 			}
 		};
@@ -58,7 +58,10 @@ public class MyAgent {
 			}
 		};
 
-		new AgentBuilder.Default().type(ElementMatchers.nameStartsWith("com.onemt")).and(ElementMatchers.isAnnotatedWith(TraceClass.class))// 指定需要拦截的类
+		new AgentBuilder.Default().type(ElementMatchers.nameStartsWith("com.onemt")
+				.and(ElementMatchers.not(ElementMatchers.isInterface()))
+				.and(ElementMatchers.not(ElementMatchers.isStatic())))
+				.and(ElementMatchers.isAnnotatedWith(TraceClass.class))// 指定需要拦截的类
 				.transform(transformer).with(listener).installOn(inst);
 	}
 }

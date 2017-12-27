@@ -6,12 +6,12 @@ import com.onemt.agent.annotation.TraceMethod;
 @TraceClass
 public class AgentTest {
 
-	@TraceMethod
+	@TraceMethod(isStart=true)
     private void fun1(String a) throws Exception {
         System.out.println("this is fun 1.");
         Thread.sleep(500);
     }
-
+	@TraceMethod
     private void fun2(String a) throws Exception {
         System.out.println("this is fun 2.");
         Thread.sleep(500);
@@ -21,6 +21,8 @@ public class AgentTest {
         AgentTest test = new AgentTest();
         test.fun1("434324");
         test.fun2("2323");
+        
+        Thread.sleep(100000);
 
     }
 }
