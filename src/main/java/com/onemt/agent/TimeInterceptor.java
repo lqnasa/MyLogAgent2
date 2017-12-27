@@ -40,9 +40,8 @@ public class TimeInterceptor {
 		TraceMethod annotation = method.getAnnotation(TraceMethod.class);
 		boolean isStart = annotation.isStart();
 		
-		Span span = null;
-		if(!isStart){
-			span = ThreadLocalUtils.get();
+		Span span = ThreadLocalUtils.get();
+		if(!isStart && span != null){
 			String traceId =span.traceId();
 			String parentId =span.id();
 			span = Span.newBuilder().traceId(traceId).id(id).parentId(parentId).build();
@@ -62,7 +61,7 @@ public class TimeInterceptor {
 		} finally {
 			Instant endNow = Instant.now();
 			long endTime = endNow.toEpochMilli()*1000+endNow.getNano()/1000;
-			Endpoint endpoint = getEndpoint();
+			Endpoint endpoint = Endpoint.newBuilder().ip(InetAddressUtils.getInetAddress()).serviceName("news-crawler").build();
 
 			span = builder.duration(endTime-startTime)
 			.localEndpoint(endpoint)
@@ -81,10 +80,6 @@ public class TimeInterceptor {
 		}
 		
 		return retVal;
-	}
-
-	private static Endpoint getEndpoint() {
-		return Endpoint.newBuilder().ip(InetAddressUtils.getInetAddress()).serviceName("news-crawler").build();
 	}
 
 }
