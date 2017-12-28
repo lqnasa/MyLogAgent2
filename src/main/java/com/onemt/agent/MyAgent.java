@@ -30,15 +30,13 @@ public class MyAgent {
 		System.out.println("this is an perform monitor agent.");
 
 		AgentBuilder.Transformer transformer = new AgentBuilder.Transformer() {
-
 			@Override
 			public Builder<?> transform(Builder<?> builder, TypeDescription typeDescription, ClassLoader classLoader,
 					JavaModule module) {
 				System.out.println("=============transform=============");
-				return builder.method(ElementMatchers.isAnnotatedWith(TraceMethod.class).and(ElementMatchers.not(ElementMatchers.isStatic())))// 拦截任意方法
+				return builder.method(ElementMatchers.isAnnotatedWith(TraceMethod.class))// 拦截任意方法
 						.intercept(MethodDelegation.to(TimeInterceptor.class)); // 委托
 			}
-			
 		};
 
 		AgentBuilder.Listener listener = new AgentBuilder.Listener() {
