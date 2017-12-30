@@ -21,8 +21,6 @@ public class AgentTest {
         AgentTest test = new AgentTest();
         AgentTest.fun1("434324");
         test.fun2("2323");
-        
         Thread.sleep(1000);
-
     }
 }

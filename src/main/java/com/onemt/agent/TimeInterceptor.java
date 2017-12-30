@@ -19,15 +19,15 @@ import zipkin2.Span;
 import zipkin2.Span.Builder;
 
 public class TimeInterceptor {
+	
+	
 
 	@RuntimeType
 	public static Object intercept(@Origin Class<?> clazz, @Origin Method method, @AllArguments Object[] arguments,
 			@SuperCall Callable<?> callable) throws Exception {
 
 		String id = UUID.randomUUID().toString().replaceAll("-", "").substring(0, 16);
-
-		Instant startNow = Instant.now();
-		long startTime = startNow.toEpochMilli() * 1000 + startNow.getNano() / 1000;
+		long startTime = getTimestamp();
 		String methodName = method.getName();
 		String className = clazz.getName();
 		Class<?> returnType = method.getReturnType();
@@ -46,29 +46,33 @@ public class TimeInterceptor {
 		ThreadLocalUtils.set(span);
 		Builder builder = span.toBuilder();
 
+		Throwable throwable = null;
 		Object retVal = null;
 		try {
 			retVal = callable.call();
 		} catch (Throwable e) {
-			builder.putTag("error", LogOutput.printStackTraceToString(e));
+			throwable=e;
 			throw e;
 		} finally {
-			Instant endNow = Instant.now();
-			long endTime = endNow.toEpochMilli() * 1000 + endNow.getNano() / 1000;
+			long endTime = getTimestamp();
 			Endpoint endpoint = Endpoint.newBuilder().ip(InetAddressUtils.getInetAddress()).serviceName("news-crawler")
 					.build();
-
-			span = builder.duration(endTime - startTime).localEndpoint(endpoint).addAnnotation(startTime, "start")
-					.addAnnotation(endTime, "end").timestamp(startTime).name(methodName)
-					.putTag("threadName", Thread.currentThread().getName()).putTag("className", className)
+			builder.duration(endTime - startTime).localEndpoint(endpoint).addAnnotation(startTime, "start")
+					.addAnnotation(endTime, "end").timestamp(startTime).name(clazz.getSimpleName()+"-->"+methodName)
+					.putTag("threadName", Thread.currentThread().getName())
+					.putTag("className", className)
 					.putTag("methodName", method.toGenericString())
-					.putTag("arguments", arguments != null && arguments.length > 0 ? arguments.toString() : "")
-					.putTag(returnType.getName(), retVal == null ? "" : retVal.toString()).build();
+					.putTag("returnType", returnType.getSimpleName());
 
-			LogOutput.spanOutput(span);
+			LogOutput.spanOutput(builder,arguments,retVal,throwable);
 		}
 
 		return retVal;
+	}
+
+	private static long getTimestamp() {
+		Instant startNow = Instant.now();
+		return startNow.toEpochMilli() * 1000 + startNow.getNano() / 1000;
 	}
 
 }

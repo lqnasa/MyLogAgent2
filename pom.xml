@@ -25,6 +25,7 @@
 			<artifactId>zipkin</artifactId>
 			<version>2.4.2</version>
 		</dependency>
+
 		<dependency>
 			<groupId>io.zipkin.reporter2</groupId>
 			<artifactId>zipkin-reporter</artifactId>
@@ -33,6 +34,12 @@
 		<dependency>
 			<groupId>io.zipkin.reporter2</groupId>
 			<artifactId>zipkin-sender-urlconnection</artifactId>
+			<version>2.2.2</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.zipkin.reporter2</groupId>
+			<artifactId>zipkin-sender-kafka11</artifactId>
 			<version>2.2.2</version>
 		</dependency>
 
@@ -73,6 +80,11 @@
 							<include>io.zipkin.zipkin2:zipkin:jar:</include>
 							<include>io.zipkin.reporter2:zipkin-reporter:jar:</include>
 							<include>io.zipkin.reporter2:zipkin-sender-urlconnection:jar:</include>
+							<!-- <include>io.zipkin.reporter2:zipkin-sender-kafka11:jar:</include>
+							<include>org.apache.kafka:kafka-clients:jar:</include>
+							<include>net.jpountz.lz4:lz4:jar:</include>
+							<include>org.xerial.snappy:snappy-java:jar:</include>
+							<include>org.slf4j:slf4j-api:jar:</include> -->
 						</includes>
 					</artifactSet>
 				</configuration>
