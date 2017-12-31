@@ -26,11 +26,9 @@ public class LogOutput {
 	
 	
 	public static void spanOutput(final Builder builder,final Object[] arguments,final Object retVal,final Throwable throwable) {
-		
 		newFixedThreadPool.execute(()->{
 			//AsyncReporter<Span> reporter = AsyncReporter.create(URLConnectionSender.create(apiUrl));
 			//KafkaSender kafkaSender = KafkaSender.newBuilder().bootstrapServers(bootstrapServers).topic("zipkin").encoding(Encoding.JSON).build();
-			
 			List<String> argumentList = new ArrayList<>();
 			if(arguments!=null){
 				for (Object object : arguments) {
@@ -58,8 +56,6 @@ public class LogOutput {
 			reporter.report(span);
 			AsyncReporter.CONSOLE.report(span);
 		});
-		
-	
 	}
 
 	public static String printStackTraceToString(Throwable t) {

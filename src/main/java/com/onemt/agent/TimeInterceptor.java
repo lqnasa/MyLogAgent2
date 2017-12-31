@@ -1,12 +1,14 @@
 package com.onemt.agent;
 
 import java.lang.reflect.Method;
+import java.net.InetAddress;
 import java.time.Instant;
-import java.util.UUID;
+import java.time.temporal.ChronoField;
 import java.util.concurrent.Callable;
 
 import com.onemt.agent.annotation.TraceMethod;
 import com.onemt.agent.log.LogOutput;
+import com.onemt.agent.util.IdWorker;
 import com.onemt.agent.util.InetAddressUtils;
 import com.onemt.agent.util.ThreadLocalUtils;
 
@@ -20,32 +22,34 @@ import zipkin2.Span.Builder;
 
 public class TimeInterceptor {
 	
+	private static final IdWorker idWorker=new IdWorker(1,1);
+	private static final InetAddress inetAddress = InetAddressUtils.getInetAddress();
+	private static final Endpoint endpoint = Endpoint.newBuilder().ip(inetAddress).serviceName("news-crawler")
+			.build();
 	
 
 	@RuntimeType
 	public static Object intercept(@Origin Class<?> clazz, @Origin Method method, @AllArguments Object[] arguments,
 			@SuperCall Callable<?> callable) throws Exception {
-
-		String id = UUID.randomUUID().toString().replaceAll("-", "").substring(0, 16);
+		String id = idWorker.nextId()+"";
 		long startTime = getTimestamp();
 		String methodName = method.getName();
 		String className = clazz.getName();
 		Class<?> returnType = method.getReturnType();
 		TraceMethod annotation = method.getAnnotation(TraceMethod.class);
 		boolean isStart = annotation.isStart();
-
 		Span span = ThreadLocalUtils.get();
 		if (!isStart && span != null) {
 			String traceId = span.traceId();
 			String parentId = span.id();
 			span = Span.newBuilder().traceId(traceId).id(id).parentId(parentId).build();
 		} else {
-			String traceId = UUID.randomUUID().toString().replaceAll("-", "").substring(0, 16);
+			String traceId = idWorker.nextId()+"";
 			span = Span.newBuilder().traceId(traceId).id(id).build();
 		}
 		ThreadLocalUtils.set(span);
 		Builder builder = span.toBuilder();
-
+		
 		Throwable throwable = null;
 		Object retVal = null;
 		try {
@@ -55,24 +59,20 @@ public class TimeInterceptor {
 			throw e;
 		} finally {
 			long endTime = getTimestamp();
-			Endpoint endpoint = Endpoint.newBuilder().ip(InetAddressUtils.getInetAddress()).serviceName("news-crawler")
-					.build();
 			builder.duration(endTime - startTime).localEndpoint(endpoint).addAnnotation(startTime, "start")
 					.addAnnotation(endTime, "end").timestamp(startTime).name(clazz.getSimpleName()+"-->"+methodName)
 					.putTag("threadName", Thread.currentThread().getName())
 					.putTag("className", className)
 					.putTag("methodName", method.toGenericString())
 					.putTag("returnType", returnType.getSimpleName());
-
 			LogOutput.spanOutput(builder,arguments,retVal,throwable);
 		}
-
 		return retVal;
 	}
 
 	private static long getTimestamp() {
-		Instant startNow = Instant.now();
-		return startNow.toEpochMilli() * 1000 + startNow.getNano() / 1000;
+		Instant now = Instant.now();
+		return now.getEpochSecond()*1000000+now.getLong(ChronoField.MICRO_OF_SECOND);
 	}
 
 }

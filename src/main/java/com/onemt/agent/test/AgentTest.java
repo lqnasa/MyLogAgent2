@@ -15,12 +15,18 @@ public class AgentTest {
     private void fun2(String a) throws Exception {
         System.out.println("this is fun 2.");
         Thread.sleep(500);
+        
     }
 	@TraceMethod
     public static void main(String[] args) throws Exception {
         AgentTest test = new AgentTest();
+        long start=System.currentTimeMillis();
         AgentTest.fun1("434324");
+        long end=System.currentTimeMillis();
+        System.out.println(end - start);
         test.fun2("2323");
+        
         Thread.sleep(1000);
+        
     }
 }
