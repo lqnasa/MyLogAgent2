@@ -3,8 +3,8 @@ package com.onemt.agent.log;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.List;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -25,13 +25,13 @@ public class LogOutput {
 	private static final ExecutorService newFixedThreadPool = Executors.newFixedThreadPool(100);
 	
 	
-	public static void spanOutput(final Builder builder,final Object[] arguments,final Object retVal,final Throwable throwable) {
+	public static void spanOutput(final Builder builder,final Method method,final Object[] arguments,final Object retVal,final Throwable throwable) {
 		newFixedThreadPool.execute(()->{
 			//AsyncReporter<Span> reporter = AsyncReporter.create(URLConnectionSender.create(apiUrl));
 			//KafkaSender kafkaSender = KafkaSender.newBuilder().bootstrapServers(bootstrapServers).topic("zipkin").encoding(Encoding.JSON).build();
-			List<String> argumentList = new ArrayList<>();
+			//List<String> argumentList = new ArrayList<>();
 			if(arguments!=null){
-				for (Object object : arguments) {
+				/*for (Object object : arguments) {
 					if(object != null){
 						if(object instanceof Serializable){
 							argumentList.add(gson.toJson(object));
@@ -40,7 +40,17 @@ public class LogOutput {
 						}
 					}
 				}
-				builder.putTag("arguments", gson.toJson(argumentList));
+				builder.putTag("arguments", gson.toJson(argumentList));*/
+				Parameter[] parameters = method.getParameters();
+				for (int i = 0; i < parameters.length; i++) {
+					String parameterName = parameters[i].getName();
+					Object parameterValue =arguments[i];
+					if(parameterValue instanceof Serializable){
+						builder.putTag("parameterName:"+parameterName, gson.toJson(parameterValue));
+					}else{
+						builder.putTag("parameterName:"+parameterName, parameterValue.toString());
+					}
+				}
 			}
 			
 			if(retVal !=null){

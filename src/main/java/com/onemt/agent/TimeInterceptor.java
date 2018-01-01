@@ -65,7 +65,7 @@ public class TimeInterceptor {
 					.putTag("className", className)
 					.putTag("methodName", method.toGenericString())
 					.putTag("returnType", returnType.getSimpleName());
-			LogOutput.spanOutput(builder,arguments,retVal,throwable);
+			LogOutput.spanOutput(builder,method,arguments,retVal,throwable);
 		}
 		return retVal;
 	}
