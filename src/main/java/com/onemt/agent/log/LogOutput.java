@@ -21,7 +21,7 @@ import zipkin2.reporter.urlconnection.URLConnectionSender;
 
 public class LogOutput {
 
-	private static final String apiUrl = "http://localhost:9411/api/v2/spans";
+	private static final String apiUrl = "http://35.157.199.209:9411/api/v2/spans";
 	//private static final String bootstrapServers = "127.0.0.1:9092";
 	
 	private static final Gson gson=new GsonBuilder().create();
@@ -42,12 +42,12 @@ public class LogOutput {
 					String parameterName = parameters[i].getName();
 					Object parameterValue =arguments[i];
 					if(parameterValue instanceof Serializable){
-						 String parameterVal = gson.toJson(parameterValue);
+						 String parameterVal = parameterValue instanceof String?gson.toJson(new String[]{(String) parameterValue}):gson.toJson(parameterValue);
 						builder.putTag("parameterName:"+parameterName, parameterVal);
 						if(isStart){
 							Matcher matcher = compile.matcher(parameterVal);
 							while(matcher.find()){
-								builder.putTag("url", matcher.group(3));
+								builder.putTag("url", gson.toJson(new String[]{matcher.group(3)}));
 								break;
 							}
 						}
@@ -58,7 +58,11 @@ public class LogOutput {
 			}
 			
 			if(retVal !=null){
-				builder.putTag("retVal", retVal instanceof Serializable?gson.toJson(retVal):retVal.toString());
+				if(retVal instanceof Serializable){
+					builder.putTag("retVal", retVal instanceof String?gson.toJson(new String[]{(String) retVal}):gson.toJson(retVal));
+				}else{
+					builder.putTag("retVal",retVal.toString());
+				}
 			}
 			
 			if(throwable != null){
@@ -68,7 +72,7 @@ public class LogOutput {
 			
 			AsyncReporter<Span> reporter = AsyncReporter.create(URLConnectionSender.create(apiUrl));
 			reporter.report(span);
-			AsyncReporter.CONSOLE.report(span);
+			//AsyncReporter.CONSOLE.report(span);
 		});
 	}
 
