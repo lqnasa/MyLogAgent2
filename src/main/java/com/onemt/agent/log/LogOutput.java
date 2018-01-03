@@ -52,7 +52,7 @@ public class LogOutput {
 							}
 						}
 					}else{
-						builder.putTag("parameterName:"+parameterName, parameterValue!=null?parameterValue.toString():null);
+						builder.putTag("parameterName:"+parameterName, parameterValue!=null?parameterValue.toString():"");
 					}
 				}
 			}
