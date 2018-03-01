@@ -47,4 +47,29 @@ public class InetAddressUtils {
 	}
 	
 	
+	/**
+	 *  获取主机ip地址 ipv4
+	 * @return
+	 */
+	public static InetAddress getInetAddress(){
+		try {
+			Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+			while (interfaces.hasMoreElements()) {
+				NetworkInterface current = interfaces.nextElement();
+				if (!current.isUp() || current.isLoopback() || current.isVirtual())
+					continue;
+				Enumeration<InetAddress> addresses = current.getInetAddresses();
+				while (addresses.hasMoreElements()) {
+					InetAddress addr = addresses.nextElement();
+					if (addr.isLoopbackAddress())
+						continue;
+						return addr;
+				}
+			}
+		} catch (SocketException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
 }

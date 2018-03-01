@@ -1,66 +1,95 @@
 package com.onemt.agent.log;
 
 import java.io.PrintWriter;
+import java.io.Serializable;
 import java.io.StringWriter;
-import java.util.List;
-import java.util.Map;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import com.onemt.agent.vo.TraceVo;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.onemt.agent.annotation.TraceMethod;
+
+import zipkin2.Span;
+import zipkin2.Span.Builder;
+import zipkin2.reporter.AsyncReporter;
+import zipkin2.reporter.urlconnection.URLConnectionSender;
 
 public class LogOutput {
 
-	//private static final Logger logger = LoggerFactory.getLogger(LogOutput.class);
-
-	private static final ExecutorService newFixedThreadPool = Executors.newFixedThreadPool(10);
-
-	//private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-
-	public static void output(final TraceVo traceVo) {
-		newFixedThreadPool.execute(() -> {
-
-			/*List<Map<String, Object>> inParams = traceVo.getInParams();
-			Map<String, Object> retVal = traceVo.getRetVal();
-			Object errorMessage = traceVo.getErrorMessage();
-
-			if (inParams != null) {
-				inParams.forEach(param -> {
-					param.forEach((k, v) -> {
-						param.replace(k, toJson(v));
-					});
-				});
+	private static final String apiUrl = "http://35.157.199.209:9411/api/v2/spans";
+	//private static final String bootstrapServers = "127.0.0.1:9092";
+	
+	private static final Gson gson=new GsonBuilder().create();
+	private static final ExecutorService newFixedThreadPool = Executors.newFixedThreadPool(100);
+	private static final String regex ="(\")?url(\")?\\s*[:=]\\s*[\"']([^\"']*)[\"']";
+	private static final Pattern compile = Pattern.compile(regex);
+	
+	
+	public static void spanOutput(final Builder builder,final Method method,final Object[] arguments,final Object retVal,final Throwable throwable) {
+		newFixedThreadPool.execute(()->{
+			//AsyncReporter<Span> reporter = AsyncReporter.create(URLConnectionSender.create(apiUrl));
+			//KafkaSender kafkaSender = KafkaSender.newBuilder().bootstrapServers(bootstrapServers).topic("zipkin").encoding(Encoding.JSON).build();
+			TraceMethod annotation = method.getAnnotation(TraceMethod.class);
+			boolean isStart = annotation.isStart();
+			if(arguments!=null){
+				Parameter[] parameters = method.getParameters();
+				for (int i = 0; i < parameters.length; i++) {
+					String parameterName = parameters[i].getName();
+					Object parameterValue =arguments[i];
+					if(parameterValue instanceof Serializable){
+						 String parameterVal = parameterValue instanceof String?gson.toJson(new String[]{(String) parameterValue}):gson.toJson(parameterValue);
+						builder.putTag("parameterName:"+parameterName, parameterVal);
+						if(isStart){
+							Matcher matcher = compile.matcher(parameterVal);
+							while(matcher.find()){
+								builder.putTag("url", gson.toJson(new String[]{matcher.group(3)}));
+								break;
+							}
+						}
+					}else{
+						builder.putTag("parameterName:"+parameterName, parameterValue!=null?parameterValue.toString():"");
+					}
+				}
 			}
-
-			if (retVal != null) {
-				retVal.forEach((k, v) -> {
-					retVal.replace(k, toJson(v));
-				});
-			}
-			if(errorMessage!=null){
-				traceVo.setErrorMessage(printStackTraceToString((Throwable)errorMessage));
-			}*/
 			
-			System.out.println("====================toString================="+traceVo);
-			//logger.info(gson.toJson(traceVo));
+			if(retVal !=null){
+				if(retVal instanceof Serializable){
+					builder.putTag("retVal", retVal instanceof String?gson.toJson(new String[]{(String) retVal}):gson.toJson(retVal));
+				}else{
+					builder.putTag("retVal",retVal.toString());
+				}
+			}
+			
+			if(throwable != null){
+				builder.putTag("error", LogOutput.printStackTraceToString(throwable));
+			}
+			Span span = builder.build();
+			
+			AsyncReporter<Span> reporter = AsyncReporter.create(URLConnectionSender.create(apiUrl));
+			reporter.report(span);
+			//AsyncReporter.CONSOLE.report(span);
 		});
-
-	}
-
-	public static Object toJson(Object object) {
-		if (object instanceof String || object instanceof Integer || object instanceof Boolean || object instanceof Long
-				|| object instanceof Boolean || object instanceof Float || object instanceof Double) {
-			return object;
-		} else {
-			return ""+object;
-		}
-
 	}
 
 	public static String printStackTraceToString(Throwable t) {
 		StringWriter sw = new StringWriter();
 		t.printStackTrace(new PrintWriter(sw, true));
 		return sw.getBuffer().toString();
+	}
+	
+	public static void main(String[] args) {
+		String regex ="(\")?url(\")?\\s*[:=]\\s*[\"']([^\"']*)[\"']";
+		String parameterVal="equest=Request{url='http://www.alriyadh.com/1564426', method='null'";
+		Pattern compile = Pattern.compile(regex);
+		Matcher matcher = compile.matcher(parameterVal);
+		while(matcher.find()){
+			System.out.println(matcher.group(3));
+		}
 	}
 
 }

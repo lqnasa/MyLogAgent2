@@ -9,4 +9,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface TraceMethod {
 	String methodDescription() default "";
+	boolean isStart() default false;
 }

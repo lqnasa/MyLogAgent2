@@ -1,111 +1,78 @@
 package com.onemt.agent;
 
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
+import java.net.InetAddress;
+import java.time.Instant;
+import java.time.temporal.ChronoField;
 import java.util.concurrent.Callable;
 
+import com.onemt.agent.annotation.TraceMethod;
+import com.onemt.agent.log.LogOutput;
+import com.onemt.agent.util.IdWorker;
+import com.onemt.agent.util.InetAddressUtils;
 import com.onemt.agent.util.ThreadLocalUtils;
-import com.onemt.agent.vo.Trace;
-import com.onemt.agent.vo.TraceVo;
 
 import net.bytebuddy.implementation.bind.annotation.AllArguments;
 import net.bytebuddy.implementation.bind.annotation.Origin;
 import net.bytebuddy.implementation.bind.annotation.RuntimeType;
 import net.bytebuddy.implementation.bind.annotation.SuperCall;
-import net.bytebuddy.implementation.bind.annotation.This;
-
-
+import zipkin2.Endpoint;
+import zipkin2.Span;
+import zipkin2.Span.Builder;
 
 public class TimeInterceptor {
 	
+	private static final IdWorker idWorker=new IdWorker(1,1);
+	private static final InetAddress inetAddress = InetAddressUtils.getInetAddress();
+	private static final Endpoint endpoint = Endpoint.newBuilder().ip(inetAddress).serviceName("news-crawler")
+			.build();
+	
+
 	@RuntimeType
-	public static Object intercept(@Origin Class<?> clazz,@Origin Method method,@AllArguments Object[] arguments,@This Object that, @SuperCall Callable<?> callable) throws Exception {
-		
-		/*.append("\ncom.onemt.agent.vo.Trace trace = com.onemt.agent.util.ThreadLocalUtils.get();")
-		.append("\ncom.onemt.agent.vo.TraceVo traceVo = new com.onemt.agent.vo.TraceVo();")
-		.append("\ntraceVo.setHostIp(trace.getHostIp());")
-		.append("\ntraceVo.setTraceId(trace.getTraceId());")
-		.append("\ntraceVo.setClassName(\""+className+"\");")
-		.append("\ntraceVo.setMethodName(\""+methodName+"\");")
-		.append("\ntraceVo.setThreadName(Thread.currentThread().getName());");
-		if(length>0){
-			bodyStr.append("\njava.util.List inParams = new java.util.ArrayList();");
-			for (int i=0;i<length;i++) {
-				bodyStr.append("\njava.util.Map inParam"+i+" = new java.util.HashMap();")
-				//parameterTypes[i].getName()
-				.append("\ninParam"+i+".put(\""+attribute.variableName(i+pos)+"\", $"+(i+1)+");")
-				.append("\ninParams.add(inParam"+i+");");
-			}
-			bodyStr.append("\ntraceVo.setInParams(inParams);");
-		}
-		bodyStr.append("\ntraceVo.setParentId(trace.getSpanId());")
-		.append("\nString spanId = java.util.UUID.randomUUID().toString();")
-		.append("\ntraceVo.setSpanId(spanId);")
-		.append("\ntrace.setSpanId(spanId);")
-		.append("\ntrace.setParentId(traceVo.getSpanId());")
-		.append("\ntraceVo.setIsEntry(Boolean.valueOf("+isEntry+"));")
-		;
-		if (!"void".equals(returnName)) {
-				bodyStr.append("\n"+returnName+" retVal = null; ");
-			}
-		bodyStr.append("\nlong startTime = System.currentTimeMillis();")
-		.append("\ntry {\n");
-		if (!"void".equals(returnName)) {
-			bodyStr.append("retVal = ");
-		}
-		bodyStr.append(newMethodName + "($$);")
-		.append("\n} catch (Throwable e) {")
-		.append("\ntraceVo.setErrCode(Integer.valueOf(1));")
-		.append("\ntraceVo.setErrorMessage(e);")
-		.append("\nthrow e;")
-		.append("\n}finally{")
-		.append("\nlong endTime = System.currentTimeMillis();")
-		.append("\ntraceVo.setCreateTime(Long.valueOf(startTime));")
-		.append("\ntraceVo.setReturnTime(Long.valueOf(endTime));")
-		.append("\ntraceVo.setCallTime(Long.valueOf(endTime-startTime));");
-		if (!"void".equals(returnName)) {
-			bodyStr.append("\njava.util.Map returnOjbect = new java.util.HashMap();")
-			.append("\nreturnOjbect.put(\""+returnName+"\",retVal);")
-			.append("\ntraceVo.setRetVal(returnOjbect);");
-		}
-		bodyStr.append("\ncom.onemt.agent.log.LogOutput.output(traceVo);")
-		.append("\ncom.onemt.agent.util.ThreadLocalUtils.set(trace);")
-		.append("\n}");
-		
-		if (!"void".equals(returnName)) {
-			bodyStr.append("\nreturn retVal;");
-		}	
-		bodyStr.append("\n}");*/
-		
+	public static Object intercept(@Origin Class<?> clazz, @Origin Method method, @AllArguments Object[] arguments,
+			@SuperCall Callable<?> callable) throws Exception {
+		String id = idWorker.nextId()+"";
+		long startTime = getTimestamp();
 		String methodName = method.getName();
 		String className = clazz.getName();
-		
-		Trace trace = ThreadLocalUtils.get();
-		TraceVo traceVo = new TraceVo();
-		traceVo.setHostIp(trace.getHostIp());
-		traceVo.setTraceId(trace.getTraceId());
-		traceVo.setClassName(className);
-		traceVo.setMethodName(methodName);
-		traceVo.setThreadName(Thread.currentThread().getName());
-		
-		int parameterCount = method.getParameterCount();
 		Class<?> returnType = method.getReturnType();
-		
-		for (Object object : arguments) {
-			System.out.println(object);
+		TraceMethod annotation = method.getAnnotation(TraceMethod.class);
+		boolean isStart = annotation.isStart();
+		Span span = ThreadLocalUtils.get();
+		if (!isStart && span != null) {
+			String traceId = span.traceId();
+			String parentId = span.id();
+			span = Span.newBuilder().traceId(traceId).id(id).parentId(parentId).build();
+		} else {
+			String traceId = idWorker.nextId()+"";
+			span = Span.newBuilder().traceId(traceId).id(id).build();
 		}
+		ThreadLocalUtils.set(span);
+		Builder builder = span.toBuilder();
 		
-		System.out.println("parameterCount:"+parameterCount+" returnType:"+returnType.getSimpleName());
-		
-		long start = System.currentTimeMillis();
+		Throwable throwable = null;
+		Object retVal = null;
 		try {
-			// 原有函数执行
-			return callable.call();
-		}catch(Throwable e){
+			retVal = callable.call();
+		} catch (Throwable e) {
+			throwable=e;
 			throw e;
 		} finally {
-			System.out.println("className:"+className+" method:"+method + ": took " + (System.currentTimeMillis() - start) + "ms");
+			long endTime = getTimestamp();
+			builder.duration(endTime - startTime).localEndpoint(endpoint).addAnnotation(startTime, "start")
+					.addAnnotation(endTime, "end").timestamp(startTime).name(clazz.getSimpleName()+"-->"+methodName)
+					.putTag("threadName", Thread.currentThread().getName())
+					.putTag("className", className)
+					.putTag("methodName", method.toGenericString())
+					.putTag("returnType", returnType.getSimpleName());
+			LogOutput.spanOutput(builder,method,arguments,retVal,throwable);
 		}
+		return retVal;
+	}
+
+	private static long getTimestamp() {
+		Instant now = Instant.now();
+		return now.getEpochSecond()*1000000+now.getLong(ChronoField.MICRO_OF_SECOND);
 	}
 
 }
